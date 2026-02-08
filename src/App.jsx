@@ -7,6 +7,8 @@ import {
 } from 'lucide-react';
 
 // --- Supabase 設定 ---
+// これらのキーは「公開用」であり、Row Level Security (RLS) により保護されています。
+// 管理用のマスターキーはコード内には含まれていません。
 const SUPABASE_URL = "https://klfcasqzhblsiqeaacxx.supabase.co";
 const SUPABASE_ANON_KEY = "sb_publishable_jBfLXgLzWG0_sJb-ce9rfQ_eJB4gHXJ";
 
@@ -83,7 +85,7 @@ export default function App() {
         {loading ? (
           <div className="flex flex-col items-center justify-center py-40 gap-4">
             <Loader2 className="animate-spin text-emerald-500" size={48} />
-            <p className="text-xs font-bold text-slate-400 tracking-widest uppercase">Connecting...</p>
+            <p className="text-xs font-bold text-slate-400 tracking-widest uppercase">Connecting to Archipelago DB...</p>
           </div>
         ) : (
           view === 'store' ? (
@@ -128,6 +130,11 @@ export default function App() {
         )}
       </main>
       <footer className="mt-20 border-t border-slate-100 py-16 text-center bg-white">
+        <div className="mb-4">
+          <p className="text-[10px] font-black text-slate-400 tracking-[0.2em] uppercase">
+            Official Site: <span className="text-emerald-600">archipelago-bm-labo.vercel.app</span>
+          </p>
+        </div>
         <p className="text-[10px] font-black text-slate-300 tracking-[0.5em] uppercase italic">
           &copy; 2024 BM-LABO / ARCHIPELAGO SYSTEM
         </p>
