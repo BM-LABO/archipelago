@@ -35,28 +35,60 @@ export default function App() {
     rules: false
   });
 
+  // Supabase初期化（CDNスクリプトの動的読み込みに対応）
   useEffect(() => {
     const initSupabase = () => {
+      // すでにSupabaseが読み込まれている場合
       if (window.supabase) {
         const client = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
         setDb(client);
+        return;
       }
+
+      // まだ読み込まれていない場合、スクリプトタグを生成して読み込む
+      const script = document.createElement('script');
+      script.src = 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2';
+      script.async = true;
+      script.onload = () => {
+        const client = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+        setDb(client);
+      };
+      script.onerror = () => {
+        console.error("Supabase script failed to load");
+        setLoading(false); // エラー時もローディングを終わらせる
+        alert("データベースへの接続に失敗しました。ブラウザの広告ブロックなどを確認してください。");
+      };
+      document.head.appendChild(script);
     };
     initSupabase();
   }, []);
 
+  // データ取得と認証監視
   useEffect(() => {
     if (!db) return;
+
     const fetchData = async () => {
       setLoading(true);
-      const { data } = await db.from('items').select('*').order('created_at', { ascending: false });
-      setItems(data || []);
-      setLoading(false);
+      try {
+        const { data, error } = await db.from('items').select('*').order('created_at', { ascending: false });
+        if (error) throw error;
+        setItems(data || []);
+      } catch (error) {
+        console.error("Error fetching items:", error);
+        // エラー時でも空のリストを表示してローディングを止める
+        setItems([]);
+      } finally {
+        setLoading(false);
+      }
     };
+
     fetchData();
+
+    // 認証状態の監視
     const { data: { subscription } } = db.auth.onAuthStateChange((_event, session) => {
       setUser(session?.user ?? null);
     });
+
     return () => subscription.unsubscribe();
   }, [db]);
 
@@ -75,6 +107,19 @@ export default function App() {
   // ナビゲーション
   const Navigation = () => {
     const [isCatalogOpen, setIsCatalogOpen] = useState(false);
+    // メニュー外クリック検知用のRef
+    const dropdownRef = useRef(null);
+
+    useEffect(() => {
+      const handleClickOutside = (event) => {
+        if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
+          setIsCatalogOpen(false);
+        }
+      };
+      document.addEventListener("mousedown", handleClickOutside);
+      return () => document.removeEventListener("mousedown", handleClickOutside);
+    }, []);
+
     return (
       <nav className="bg-slate-900 text-white p-4 sticky top-0 z-50 shadow-xl">
         <div className="container mx-auto flex justify-between items-center px-2 md:px-4">
@@ -89,12 +134,12 @@ export default function App() {
           </div>
 
           <div className="flex gap-2 md:gap-4 items-center">
-            <div className="relative">
+            <div className="relative" ref={dropdownRef}>
               <button onClick={() => setIsCatalogOpen(!isCatalogOpen)} className={`flex items-center gap-1 px-3 py-2 rounded-lg text-[10px] md:text-xs font-black uppercase tracking-widest transition-all ${view === 'store' || view === 'shops' ? 'text-emerald-400 bg-emerald-900/30' : 'text-slate-300 hover:text-white'}`}>
                 Catalog <ChevronDown size={14} />
               </button>
               {isCatalogOpen && (
-                <div className="absolute right-0 top-full mt-2 w-48 bg-white rounded-xl shadow-xl border border-slate-100 py-1 overflow-hidden">
+                <div className="absolute right-0 top-full mt-2 w-48 bg-white rounded-xl shadow-xl border border-slate-100 py-1 overflow-hidden animate-in fade-in zoom-in-95 duration-200">
                   <button onClick={() => { setView('store'); setIsCatalogOpen(false); }} className="w-full text-left px-4 py-3 text-slate-700 hover:bg-slate-50 flex items-center gap-3">
                     <LayoutGrid size={16} className="text-emerald-600" />
                     <span className="text-xs font-bold">全アイテム</span>
@@ -255,19 +300,25 @@ export default function App() {
                   </div>
                 </div>
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 md:gap-8">
-                  {items.map(item => (
-                    <div key={item.id} className="bg-white rounded-[1.5rem] border border-slate-100 p-5 shadow-sm hover:shadow-xl transition-all group hover:-translate-y-1">
-                      <div className="aspect-square bg-slate-50 rounded-2xl mb-4 flex items-center justify-center text-slate-200 overflow-hidden relative">
-                        <ImageIcon size={32} />
-                        <div className="absolute inset-0 bg-black/0 group-hover:bg-black/5 transition-colors"></div>
-                      </div>
-                      <h3 className="font-black text-slate-800 mb-1 text-sm">{item.name}</h3>
-                      <div className="text-lg font-black text-emerald-600 mb-4 italic">¥{item.price.toLocaleString()}</div>
-                      <a href={item.mercariUrl} target="_blank" rel="noopener noreferrer" className="w-full bg-slate-900 text-white py-2.5 rounded-xl flex items-center justify-center gap-2 text-[10px] font-black uppercase tracking-widest hover:bg-emerald-600 transition-colors shadow-lg">
-                        <ExternalLink size={12} /> メルカリで見る
-                      </a>
+                  {items.length === 0 ? (
+                    <div className="col-span-full border-2 border-dashed border-slate-200 rounded-[2rem] py-20 text-center">
+                      <p className="text-slate-400 font-bold uppercase tracking-widest text-xs">現在、表示できるアイテムがありません</p>
                     </div>
-                  ))}
+                  ) : (
+                    items.map(item => (
+                      <div key={item.id} className="bg-white rounded-[1.5rem] border border-slate-100 p-5 shadow-sm hover:shadow-xl transition-all group hover:-translate-y-1">
+                        <div className="aspect-square bg-slate-50 rounded-2xl mb-4 flex items-center justify-center text-slate-200 overflow-hidden relative">
+                          <ImageIcon size={32} />
+                          <div className="absolute inset-0 bg-black/0 group-hover:bg-black/5 transition-colors"></div>
+                        </div>
+                        <h3 className="font-black text-slate-800 mb-1 text-sm">{item.name}</h3>
+                        <div className="text-lg font-black text-emerald-600 mb-4 italic">¥{item.price.toLocaleString()}</div>
+                        <a href={item.mercariUrl} target="_blank" rel="noopener noreferrer" className="w-full bg-slate-900 text-white py-2.5 rounded-xl flex items-center justify-center gap-2 text-[10px] font-black uppercase tracking-widest hover:bg-emerald-600 transition-colors shadow-lg">
+                          <ExternalLink size={12} /> メルカリで見る
+                        </a>
+                      </div>
+                    ))
+                  )}
                 </div>
               </div>
             )}
