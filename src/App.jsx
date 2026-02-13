@@ -5,7 +5,7 @@ import {
   User, Loader2, AlertCircle, CheckCircle2, Search, Store,
   CreditCard, ShoppingCart, Filter, ShieldAlert, ChevronDown, 
   LayoutGrid, Users, ClipboardCheck, ArrowRight, Info, Calendar,
-  BarChart3, Eye, Edit3, PlusCircle, AlertTriangle
+  BarChart3, Eye, Edit3, PlusCircle, AlertTriangle, Grid, Map
 } from 'lucide-react';
 
 // --- Supabase 設定 ---
@@ -14,7 +14,7 @@ const SUPABASE_ANON_KEY = "sb_publishable_jBfLXgLzWG0_sJb-ce9rfQ_eJB4gHXJ";
 
 // プラン定義
 const SUBSCRIPTION_PLANS = [
-  { id: 'light', name: 'ライト', monthlyPrice: 500, yearlyPrice: 5000, limit: 5, color: 'text-slate-500', bg: 'bg-slate-50', desc: 'まずは数点から紹介してみたい方に' },
+  { id: 'light', name: 'ライト', monthlyPrice: 500, yearlyPrice: 5000, limit: 5, color: 'text-slate-500', bg: 'bg-slate-50', desc: 'まずは数点から掲載してみたい方に' },
   { id: 'standard', name: 'スタンダード', monthlyPrice: 1000, yearlyPrice: 10000, limit: 20, color: 'text-emerald-600', bg: 'bg-emerald-50', desc: '本格的にカタログとして活用したい方に' },
   { id: 'premium', name: 'プレミアム', monthlyPrice: 2000, yearlyPrice: 20000, limit: 50, color: 'text-purple-600', bg: 'bg-purple-50', desc: 'より多くの植物を並べたい方に' }
 ];
@@ -22,12 +22,13 @@ const SUBSCRIPTION_PLANS = [
 export default function App() {
   const [view, setView] = useState('store'); // store, shops, faq, join, register, admin, mypage, newItem
   const [items, setItems] = useState([]);
-  const [user, setUser] = useState(null); // ログインユーザー
-  const [isAdmin, setIsAdmin] = useState(false); // マスター管理者フラグ
+  const [user, setUser] = useState(null); 
+  const [isAdmin, setIsAdmin] = useState(false); 
   const [loading, setLoading] = useState(true);
   const [db, setDb] = useState(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedPlan, setSelectedPlan] = useState(null);
+  const [isCatalogOpen, setIsCatalogOpen] = useState(false);
 
   // 重要事項同意ステート
   const [agreements, setAgreements] = useState({
@@ -80,7 +81,6 @@ export default function App() {
         setView('admin');
       }
     } else if (type === 'test') {
-      // 奄美の裏庭。アカウント (利用料無料・テスト用)
       setUser({ 
         id: 'user_amami', 
         name: '奄美の裏庭。', 
@@ -107,8 +107,46 @@ export default function App() {
           <span className="text-[9px] font-bold text-slate-400 mt-1 ml-1 uppercase">Produced by <span className="text-emerald-500">BM-LABO</span></span>
         </div>
 
-        <div className="flex gap-4 items-center">
-          <button onClick={() => setView('store')} className={`text-[10px] font-black uppercase tracking-widest ${view === 'store' ? 'text-emerald-400' : 'text-slate-300 hover:text-white'}`}>Catalog</button>
+        <div className="flex gap-6 items-center">
+          {/* Catalog Dropdown */}
+          <div className="relative">
+            <button 
+              onMouseEnter={() => setIsCatalogOpen(true)}
+              onClick={() => setIsCatalogOpen(!isCatalogOpen)}
+              className={`text-[10px] font-black uppercase tracking-widest flex items-center gap-1.5 transition-colors ${['store', 'shops'].includes(view) ? 'text-emerald-400' : 'text-slate-300 hover:text-white'}`}
+            >
+              Catalog <ChevronDown size={12} className={`transition-transform ${isCatalogOpen ? 'rotate-180' : ''}`} />
+            </button>
+            
+            {isCatalogOpen && (
+              <div 
+                onMouseLeave={() => setIsCatalogOpen(false)}
+                className="absolute top-full left-0 mt-2 w-48 bg-white rounded-xl shadow-2xl border border-slate-100 py-2 animate-in fade-in zoom-in-95 duration-150"
+              >
+                <button 
+                  onClick={() => { setView('store'); setIsCatalogOpen(false); }}
+                  className="w-full text-left px-4 py-3 hover:bg-slate-50 flex items-center gap-3 group transition-colors"
+                >
+                  <Grid size={14} className="text-slate-400 group-hover:text-emerald-500" />
+                  <div className="flex flex-col">
+                    <span className="text-[10px] font-black text-slate-800 uppercase tracking-wider">All Items</span>
+                    <span className="text-[8px] text-slate-400 font-bold">全ての植物を一覧表示</span>
+                  </div>
+                </button>
+                <button 
+                  onClick={() => { setView('shops'); setIsCatalogOpen(false); }}
+                  className="w-full text-left px-4 py-3 hover:bg-slate-50 flex items-center gap-3 group transition-colors"
+                >
+                  <Map size={14} className="text-slate-400 group-hover:text-emerald-500" />
+                  <div className="flex flex-col">
+                    <span className="text-[10px] font-black text-slate-800 uppercase tracking-wider">By Shops</span>
+                    <span className="text-[8px] text-slate-400 font-bold">出品者ごとに表示</span>
+                  </div>
+                </button>
+              </div>
+            )}
+          </div>
+
           <button onClick={() => setView('faq')} className={`text-[10px] font-black uppercase tracking-widest ${view === 'faq' ? 'text-emerald-400' : 'text-slate-300 hover:text-white'}`}>Guide</button>
           
           {user ? (
@@ -130,6 +168,28 @@ export default function App() {
         </div>
       </div>
     </nav>
+  );
+
+  // ショップ一覧表示（ダミー）
+  const ShopsView = () => (
+    <div className="animate-in fade-in">
+      <div className="mb-10">
+        <h2 className="text-3xl md:text-4xl font-black text-slate-900 tracking-tighter uppercase italic leading-none mb-3">Island Shops</h2>
+        <p className="text-[10px] font-bold text-slate-400 tracking-[0.3em]">EXPLORE THE UNIQUE GROWERS</p>
+      </div>
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+        <div className="bg-white p-8 rounded-[2rem] border border-slate-100 shadow-sm flex items-center gap-6 group hover:border-emerald-200 transition-all cursor-pointer">
+          <div className="w-20 h-20 bg-emerald-50 rounded-full flex items-center justify-center text-emerald-500 font-black text-xl italic group-hover:scale-110 transition-transform">奄</div>
+          <div>
+            <h3 className="text-lg font-black text-slate-900 mb-1">奄美の裏庭。</h3>
+            <p className="text-[10px] text-slate-400 font-bold mb-4">希少な熱帯植物とコーデックスを中心に掲載</p>
+            <div className="flex items-center gap-2">
+              <span className="text-[10px] font-black text-emerald-600 bg-emerald-50 px-2 py-1 rounded">{items.length} Items</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
   );
 
   // マイページ（ユーザー画面）
@@ -373,7 +433,7 @@ export default function App() {
   );
 
   return (
-    <div className="bg-[#FCFDFD] min-h-screen font-sans text-slate-900">
+    <div className="bg-[#FCFDFD] min-h-screen font-sans text-slate-900" onClick={() => setIsCatalogOpen(false)}>
       <Navigation />
       
       <main className="container mx-auto p-4 md:p-8 max-w-7xl min-h-[70vh]">
@@ -411,6 +471,8 @@ export default function App() {
                 </div>
               </div>
             )}
+
+            {view === 'shops' && <ShopsView />}
 
             {view === 'faq' && (
               <div className="max-w-3xl mx-auto py-10">
