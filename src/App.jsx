@@ -5,7 +5,8 @@ import {
   User, Loader2, AlertCircle, CheckCircle2, Search, Store,
   CreditCard, ShoppingCart, Filter, ShieldAlert, ChevronDown, 
   LayoutGrid, Users, ClipboardCheck, ArrowRight, Info, Calendar,
-  BarChart3, Eye, Edit3, PlusCircle, AlertTriangle, Grid, Map
+  BarChart3, Eye, Edit3, PlusCircle, AlertTriangle, Grid, Map,
+  Menu, X, LogIn
 } from 'lucide-react';
 
 // --- Supabase 設定 ---
@@ -20,7 +21,7 @@ const SUBSCRIPTION_PLANS = [
 ];
 
 export default function App() {
-  const [view, setView] = useState('store'); // store, shops, faq, join, register, admin, mypage, newItem
+  const [view, setView] = useState('store'); 
   const [items, setItems] = useState([]);
   const [user, setUser] = useState(null); 
   const [isAdmin, setIsAdmin] = useState(false); 
@@ -28,7 +29,10 @@ export default function App() {
   const [db, setDb] = useState(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedPlan, setSelectedPlan] = useState(null);
-  const [isCatalogOpen, setIsCatalogOpen] = useState(false);
+  
+  // モーダル・メニュー制御用
+  const [isLoginModalOpen, setIsLoginModalOpen] = useState(false);
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
   // 重要事項同意ステート
   const [agreements, setAgreements] = useState({
@@ -71,8 +75,11 @@ export default function App() {
     fetchData();
   }, [db]);
 
-  // ログインシミュレーション
+  // ログイン処理
   const handleLogin = (type) => {
+    setIsLoginModalOpen(false); // モーダルを閉じる
+    setIsMobileMenuOpen(false); // スマホメニューも閉じる
+
     if (type === 'master') {
       const email = prompt("マスター管理用メールアドレス");
       if (email === "master@bm-labo.com") {
@@ -95,102 +102,212 @@ export default function App() {
     }
   };
 
-  // ナビゲーション
-  const Navigation = () => (
-    <nav className="bg-slate-900 text-white p-4 sticky top-0 z-50 shadow-xl">
-      <div className="container mx-auto flex justify-between items-center">
-        <div className="flex flex-col cursor-pointer group" onClick={() => setView('store')}>
-          <div className="flex items-center gap-2">
-            <Waves className="h-6 w-6 text-emerald-400" />
-            <h1 className="text-xl font-black tracking-widest uppercase italic">Archipelago</h1>
-          </div>
-          <span className="text-[9px] font-bold text-slate-400 mt-1 ml-1 uppercase">Produced by <span className="text-emerald-500">BM-LABO</span></span>
-        </div>
+  const handleLogout = () => {
+    setUser(null);
+    setIsAdmin(false);
+    setView('store');
+    setIsMobileMenuOpen(false);
+  };
 
-        <div className="flex gap-6 items-center">
-          {/* Catalog Dropdown */}
-          <div className="relative">
-            <button 
-              onMouseEnter={() => setIsCatalogOpen(true)}
-              onClick={() => setIsCatalogOpen(!isCatalogOpen)}
-              className={`text-[10px] font-black uppercase tracking-widest flex items-center gap-1.5 transition-colors ${['store', 'shops'].includes(view) ? 'text-emerald-400' : 'text-slate-300 hover:text-white'}`}
-            >
-              Catalog <ChevronDown size={12} className={`transition-transform ${isCatalogOpen ? 'rotate-180' : ''}`} />
-            </button>
-            
-            {isCatalogOpen && (
-              <div 
-                onMouseLeave={() => setIsCatalogOpen(false)}
-                className="absolute top-full left-0 mt-2 w-48 bg-white rounded-xl shadow-2xl border border-slate-100 py-2 animate-in fade-in zoom-in-95 duration-150"
-              >
+  // ナビゲーションコンポーネント
+  const Navigation = () => {
+    const [isCatalogOpen, setIsCatalogOpen] = useState(false);
+    
+    // スマホメニュー内のカタログ開閉用
+    const [isMobileCatalogOpen, setIsMobileCatalogOpen] = useState(true);
+
+    return (
+      <>
+        <nav className="bg-slate-900 text-white p-4 sticky top-0 z-50 shadow-xl">
+          <div className="container mx-auto flex justify-between items-center">
+            {/* ロゴ */}
+            <div className="flex flex-col cursor-pointer group" onClick={() => { setView('store'); setIsMobileMenuOpen(false); }}>
+              <div className="flex items-center gap-2">
+                <Waves className="h-6 w-6 text-emerald-400" />
+                <h1 className="text-xl font-black tracking-widest uppercase italic">Archipelago</h1>
+              </div>
+              <span className="text-[9px] font-bold text-slate-400 mt-1 ml-1 uppercase">Produced by <span className="text-emerald-500">BM-LABO</span></span>
+            </div>
+
+            {/* PC用メニュー (md以上で表示) */}
+            <div className="hidden md:flex gap-6 items-center">
+              {/* Catalog Dropdown */}
+              <div className="relative">
                 <button 
-                  onClick={() => { setView('store'); setIsCatalogOpen(false); }}
-                  className="w-full text-left px-4 py-3 hover:bg-slate-50 flex items-center gap-3 group transition-colors"
+                  onMouseEnter={() => setIsCatalogOpen(true)}
+                  onClick={() => setIsCatalogOpen(!isCatalogOpen)}
+                  className={`text-[10px] font-black uppercase tracking-widest flex items-center gap-1.5 transition-colors ${['store', 'shops'].includes(view) ? 'text-emerald-400' : 'text-slate-300 hover:text-white'}`}
                 >
-                  <Grid size={14} className="text-slate-400 group-hover:text-emerald-500" />
-                  <div className="flex flex-col">
-                    <span className="text-[10px] font-black text-slate-800 uppercase tracking-wider">All Items</span>
-                    <span className="text-[8px] text-slate-400 font-bold">全ての植物を一覧表示</span>
+                  Catalog <ChevronDown size={12} className={`transition-transform ${isCatalogOpen ? 'rotate-180' : ''}`} />
+                </button>
+                
+                {isCatalogOpen && (
+                  <div 
+                    onMouseLeave={() => setIsCatalogOpen(false)}
+                    className="absolute top-full left-0 mt-2 w-48 bg-white rounded-xl shadow-2xl border border-slate-100 py-2 animate-in fade-in zoom-in-95 duration-150"
+                  >
+                    <button 
+                      onClick={() => { setView('store'); setIsCatalogOpen(false); }}
+                      className="w-full text-left px-4 py-3 hover:bg-slate-50 flex items-center gap-3 group transition-colors"
+                    >
+                      <Grid size={14} className="text-slate-400 group-hover:text-emerald-500" />
+                      <div className="flex flex-col">
+                        <span className="text-[10px] font-black text-slate-800 uppercase tracking-wider">All Items</span>
+                        <span className="text-[8px] text-slate-400 font-bold">全ての植物を一覧表示</span>
+                      </div>
+                    </button>
+                    <button 
+                      onClick={() => { setView('shops'); setIsCatalogOpen(false); }}
+                      className="w-full text-left px-4 py-3 hover:bg-slate-50 flex items-center gap-3 group transition-colors"
+                    >
+                      <Map size={14} className="text-slate-400 group-hover:text-emerald-500" />
+                      <div className="flex flex-col">
+                        <span className="text-[10px] font-black text-slate-800 uppercase tracking-wider">By Shops</span>
+                        <span className="text-[8px] text-slate-400 font-bold">出品者ごとに表示</span>
+                      </div>
+                    </button>
+                  </div>
+                )}
+              </div>
+
+              <button onClick={() => setView('faq')} className={`text-[10px] font-black uppercase tracking-widest ${view === 'faq' ? 'text-emerald-400' : 'text-slate-300 hover:text-white'}`}>Guide</button>
+              
+              {/* PC用 ログイン/管理ボタン */}
+              {user ? (
+                <div className="flex items-center gap-3">
+                  <button 
+                    onClick={() => setView(isAdmin ? 'admin' : 'mypage')}
+                    className="bg-emerald-600/20 text-emerald-400 px-3 py-1.5 rounded-lg text-[10px] font-black border border-emerald-600/30 hover:bg-emerald-600/30 transition-colors"
+                  >
+                    {isAdmin ? 'MASTER ADMIN' : 'MY PAGE'}
+                  </button>
+                  <button onClick={handleLogout} className="text-slate-400 hover:text-white"><LogOut size={16}/></button>
+                </div>
+              ) : (
+                <button onClick={() => setIsLoginModalOpen(true)} className="px-4 py-2 bg-slate-800 rounded-lg text-[10px] font-bold hover:bg-slate-700 transition-colors flex items-center gap-2">
+                  <LogIn size={14}/> Login
+                </button>
+              )}
+            </div>
+
+            {/* スマホ用メニューボタン (md未満で表示) */}
+            <button className="md:hidden text-slate-300 hover:text-white" onClick={() => setIsMobileMenuOpen(true)}>
+              <Menu size={24} />
+            </button>
+          </div>
+        </nav>
+
+        {/* スマホ用 フルスクリーンメニュー */}
+        {isMobileMenuOpen && (
+          <div className="fixed inset-0 z-[100] bg-slate-900/95 backdrop-blur-sm animate-in fade-in slide-in-from-right-10 duration-200 md:hidden">
+            <div className="p-4 flex justify-end">
+              <button onClick={() => setIsMobileMenuOpen(false)} className="text-slate-400 hover:text-white">
+                <X size={28} />
+              </button>
+            </div>
+            
+            <div className="flex flex-col items-center gap-8 mt-8 px-8">
+              {/* スマホ用 カタログメニュー */}
+              <div className="w-full">
+                <button 
+                  onClick={() => setIsMobileCatalogOpen(!isMobileCatalogOpen)}
+                  className="text-xl font-black text-white uppercase tracking-widest w-full flex justify-between items-center pb-2 border-b border-slate-700"
+                >
+                  Catalog <ChevronDown size={20} className={`transition-transform ${isMobileCatalogOpen ? 'rotate-180' : ''}`} />
+                </button>
+                
+                {isMobileCatalogOpen && (
+                  <div className="flex flex-col gap-4 mt-4 pl-4 animate-in slide-in-from-top-2">
+                    <button onClick={() => { setView('store'); setIsMobileMenuOpen(false); }} className="flex items-center gap-3 text-slate-300 hover:text-emerald-400">
+                      <Grid size={18} />
+                      <span className="font-bold">全アイテム一覧</span>
+                    </button>
+                    <button onClick={() => { setView('shops'); setIsMobileMenuOpen(false); }} className="flex items-center gap-3 text-slate-300 hover:text-emerald-400">
+                      <Map size={18} />
+                      <span className="font-bold">ショップ一覧</span>
+                    </button>
+                  </div>
+                )}
+              </div>
+
+              {/* スマホ用 ガイド */}
+              <button onClick={() => { setView('faq'); setIsMobileMenuOpen(false); }} className="text-xl font-black text-white uppercase tracking-widest w-full text-left pb-2 border-b border-slate-700">
+                Guide
+              </button>
+
+              {/* スマホ用 ログイン/管理 */}
+              {user ? (
+                <div className="w-full flex flex-col gap-4 mt-4">
+                  <div className="text-sm font-bold text-emerald-500 mb-2">Login as: {user.name}</div>
+                  <button 
+                    onClick={() => { setView(isAdmin ? 'admin' : 'mypage'); setIsMobileMenuOpen(false); }}
+                    className="w-full bg-emerald-600 text-white py-4 rounded-xl font-black text-sm uppercase tracking-widest"
+                  >
+                    {isAdmin ? 'Master Admin' : 'My Page'}
+                  </button>
+                  <button 
+                    onClick={handleLogout}
+                    className="w-full border border-slate-700 text-slate-400 py-3 rounded-xl font-bold text-xs uppercase"
+                  >
+                    Logout
+                  </button>
+                </div>
+              ) : (
+                <button 
+                  onClick={() => setIsLoginModalOpen(true)}
+                  className="w-full bg-slate-800 text-white py-4 rounded-xl font-black text-sm uppercase tracking-widest mt-4 flex items-center justify-center gap-2"
+                >
+                  <LogIn size={18} /> Login
+                </button>
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* ログイン選択モーダル (共通) */}
+        {isLoginModalOpen && (
+          <div className="fixed inset-0 z-[110] bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in duration-200">
+            <div className="bg-white rounded-[2rem] p-8 w-full max-w-md relative shadow-2xl">
+              <button onClick={() => setIsLoginModalOpen(false)} className="absolute top-6 right-6 text-slate-300 hover:text-slate-800">
+                <X size={24} />
+              </button>
+              
+              <h2 className="text-2xl font-black text-slate-900 mb-2 text-center uppercase italic">Login Portal</h2>
+              <p className="text-center text-xs text-slate-400 font-bold mb-8">アカウントの種類を選択してください</p>
+
+              <div className="space-y-4">
+                <button 
+                  onClick={() => handleLogin('test')}
+                  className="w-full p-5 rounded-2xl border-2 border-slate-100 hover:border-emerald-500 hover:bg-emerald-50 transition-all flex items-center gap-4 group text-left"
+                >
+                  <div className="p-3 bg-emerald-100 text-emerald-600 rounded-xl group-hover:bg-emerald-500 group-hover:text-white transition-colors">
+                    <Store size={24} />
+                  </div>
+                  <div>
+                    <div className="font-black text-slate-800 text-sm group-hover:text-emerald-900">出品者ログイン</div>
+                    <div className="text-[10px] text-slate-400 font-bold mt-0.5">マイページ・出品管理へ</div>
                   </div>
                 </button>
+
                 <button 
-                  onClick={() => { setView('shops'); setIsCatalogOpen(false); }}
-                  className="w-full text-left px-4 py-3 hover:bg-slate-50 flex items-center gap-3 group transition-colors"
+                  onClick={() => handleLogin('master')}
+                  className="w-full p-5 rounded-2xl border-2 border-slate-100 hover:border-slate-800 hover:bg-slate-50 transition-all flex items-center gap-4 group text-left"
                 >
-                  <Map size={14} className="text-slate-400 group-hover:text-emerald-500" />
-                  <div className="flex flex-col">
-                    <span className="text-[10px] font-black text-slate-800 uppercase tracking-wider">By Shops</span>
-                    <span className="text-[8px] text-slate-400 font-bold">出品者ごとに表示</span>
+                  <div className="p-3 bg-slate-100 text-slate-600 rounded-xl group-hover:bg-slate-800 group-hover:text-white transition-colors">
+                    <ShieldCheck size={24} />
+                  </div>
+                  <div>
+                    <div className="font-black text-slate-800 text-sm">管理者ログイン</div>
+                    <div className="text-[10px] text-slate-400 font-bold mt-0.5">システム全体の管理へ</div>
                   </div>
                 </button>
               </div>
-            )}
-          </div>
-
-          <button onClick={() => setView('faq')} className={`text-[10px] font-black uppercase tracking-widest ${view === 'faq' ? 'text-emerald-400' : 'text-slate-300 hover:text-white'}`}>Guide</button>
-          
-          {user ? (
-            <div className="flex items-center gap-3">
-              <button 
-                onClick={() => setView(isAdmin ? 'admin' : 'mypage')}
-                className="bg-emerald-600/20 text-emerald-400 px-3 py-1.5 rounded-lg text-[10px] font-black border border-emerald-600/30"
-              >
-                {isAdmin ? 'MASTER ADMIN' : 'MY PAGE'}
-              </button>
-              <button onClick={() => {setUser(null); setIsAdmin(false); setView('store');}} className="text-slate-400 hover:text-white"><LogOut size={16}/></button>
-            </div>
-          ) : (
-            <div className="flex gap-2">
-              <button onClick={() => handleLogin('test')} className="px-3 py-1.5 border border-slate-600 rounded-lg text-[10px] font-bold">User Login</button>
-              <button onClick={() => handleLogin('master')} className="px-3 py-1.5 bg-slate-800 rounded-lg text-[10px] font-bold">Admin</button>
-            </div>
-          )}
-        </div>
-      </div>
-    </nav>
-  );
-
-  // ショップ一覧表示（ダミー）
-  const ShopsView = () => (
-    <div className="animate-in fade-in">
-      <div className="mb-10">
-        <h2 className="text-3xl md:text-4xl font-black text-slate-900 tracking-tighter uppercase italic leading-none mb-3">Island Shops</h2>
-        <p className="text-[10px] font-bold text-slate-400 tracking-[0.3em]">EXPLORE THE UNIQUE GROWERS</p>
-      </div>
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-        <div className="bg-white p-8 rounded-[2rem] border border-slate-100 shadow-sm flex items-center gap-6 group hover:border-emerald-200 transition-all cursor-pointer">
-          <div className="w-20 h-20 bg-emerald-50 rounded-full flex items-center justify-center text-emerald-500 font-black text-xl italic group-hover:scale-110 transition-transform">奄</div>
-          <div>
-            <h3 className="text-lg font-black text-slate-900 mb-1">奄美の裏庭。</h3>
-            <p className="text-[10px] text-slate-400 font-bold mb-4">希少な熱帯植物とコーデックスを中心に掲載</p>
-            <div className="flex items-center gap-2">
-              <span className="text-[10px] font-black text-emerald-600 bg-emerald-50 px-2 py-1 rounded">{items.length} Items</span>
             </div>
           </div>
-        </div>
-      </div>
-    </div>
-  );
+        )}
+      </>
+    );
+  };
 
   // マイページ（ユーザー画面）
   const MyPageView = () => {
@@ -239,7 +356,7 @@ export default function App() {
               <tr>
                 <th className="px-6 py-4 text-[10px] font-black text-slate-400 uppercase">商品名</th>
                 <th className="px-6 py-4 text-[10px] font-black text-slate-400 uppercase">価格</th>
-                <th className="px-6 py-4 text-[10px] font-black text-slate-400 uppercase">メルカリURL</th>
+                <th className="px-6 py-4 text-[10px] font-black text-slate-400 uppercase hidden md:table-cell">メルカリURL</th>
                 <th className="px-6 py-4 text-[10px] font-black text-slate-400 uppercase">操作</th>
               </tr>
             </thead>
@@ -248,7 +365,7 @@ export default function App() {
                 <tr key={item.id} className="hover:bg-slate-50/50">
                   <td className="px-6 py-4 text-xs font-bold text-slate-700">{item.name}</td>
                   <td className="px-6 py-4 text-xs font-black text-emerald-600">¥{item.price.toLocaleString()}</td>
-                  <td className="px-6 py-4 text-[10px] text-blue-500 underline truncate max-w-[150px]">{item.mercariUrl}</td>
+                  <td className="px-6 py-4 text-[10px] text-blue-500 underline truncate max-w-[150px] hidden md:table-cell">{item.mercariUrl}</td>
                   <td className="px-6 py-4 flex items-center gap-4">
                     <button className="text-slate-400 hover:text-slate-900 transition-colors"><Edit3 size={16}/></button>
                     <button className="text-slate-400 hover:text-red-500 transition-colors"><Trash2 size={16}/></button>
@@ -277,7 +394,7 @@ export default function App() {
         <p className="text-[10px] font-black text-slate-400 tracking-[0.3em] uppercase">System Controller</p>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-4 gap-6 mb-12">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-12">
         <div className="bg-slate-900 text-white p-6 rounded-2xl shadow-xl">
           <div className="text-[10px] font-black text-emerald-400 mb-2 uppercase">Total Users</div>
           <div className="text-4xl font-black">1 <span className="text-xs text-slate-500">active</span></div>
@@ -305,39 +422,41 @@ export default function App() {
             <button className="p-2 bg-slate-50 rounded-lg text-slate-400"><Filter size={16}/></button>
           </div>
         </div>
-        <table className="w-full text-left">
-          <thead className="bg-slate-50">
-            <tr>
-              <th className="px-6 py-4 text-[10px] font-black text-slate-400 uppercase">Shop Name</th>
-              <th className="px-6 py-4 text-[10px] font-black text-slate-400 uppercase">Plan</th>
-              <th className="px-6 py-4 text-[10px] font-black text-slate-400 uppercase">Status</th>
-              <th className="px-6 py-4 text-[10px] font-black text-slate-400 uppercase">Items</th>
-              <th className="px-6 py-4 text-[10px] font-black text-slate-400 uppercase">Actions</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-slate-50">
-            <tr className="hover:bg-slate-50/50">
-              <td className="px-6 py-4">
-                <div className="text-xs font-black text-slate-900">奄美の裏庭。</div>
-                <div className="text-[9px] text-slate-400 font-bold">test@example.com</div>
-              </td>
-              <td className="px-6 py-4"><span className="text-[9px] font-black bg-purple-100 text-purple-600 px-2 py-1 rounded-full uppercase">Premium (Free)</span></td>
-              <td className="px-6 py-4"><span className="text-[9px] font-black bg-emerald-100 text-emerald-600 px-2 py-1 rounded-full uppercase">Active</span></td>
-              <td className="px-6 py-4 text-xs font-bold text-slate-700">{items.filter(i=>i.seller_id==='user_amami').length} / 50</td>
-              <td className="px-6 py-4 flex gap-3">
-                <button className="text-slate-400 hover:text-slate-900"><Edit3 size={16}/></button>
-                <button className="text-slate-400 hover:text-red-500"><ShieldAlert size={16}/></button>
-              </td>
-            </tr>
-          </tbody>
-        </table>
+        <div className="overflow-x-auto">
+          <table className="w-full text-left">
+            <thead className="bg-slate-50">
+              <tr>
+                <th className="px-6 py-4 text-[10px] font-black text-slate-400 uppercase whitespace-nowrap">Shop Name</th>
+                <th className="px-6 py-4 text-[10px] font-black text-slate-400 uppercase whitespace-nowrap">Plan</th>
+                <th className="px-6 py-4 text-[10px] font-black text-slate-400 uppercase whitespace-nowrap">Status</th>
+                <th className="px-6 py-4 text-[10px] font-black text-slate-400 uppercase whitespace-nowrap">Items</th>
+                <th className="px-6 py-4 text-[10px] font-black text-slate-400 uppercase whitespace-nowrap">Actions</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-slate-50">
+              <tr className="hover:bg-slate-50/50">
+                <td className="px-6 py-4">
+                  <div className="text-xs font-black text-slate-900">奄美の裏庭。</div>
+                  <div className="text-[9px] text-slate-400 font-bold">test@example.com</div>
+                </td>
+                <td className="px-6 py-4"><span className="text-[9px] font-black bg-purple-100 text-purple-600 px-2 py-1 rounded-full uppercase">Premium (Free)</span></td>
+                <td className="px-6 py-4"><span className="text-[9px] font-black bg-emerald-100 text-emerald-600 px-2 py-1 rounded-full uppercase">Active</span></td>
+                <td className="px-6 py-4 text-xs font-bold text-slate-700">{items.filter(i=>i.seller_id==='user_amami').length} / 50</td>
+                <td className="px-6 py-4 flex gap-3">
+                  <button className="text-slate-400 hover:text-slate-900"><Edit3 size={16}/></button>
+                  <button className="text-slate-400 hover:text-red-500"><ShieldAlert size={16}/></button>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
       </div>
     </div>
   );
 
   // 掲載案内・プラン
   const JoinView = () => (
-    <div className="max-w-4xl mx-auto py-10">
+    <div className="max-w-4xl mx-auto py-10 animate-in fade-in">
       <div className="text-center mb-16">
         <h2 className="text-4xl font-black text-slate-900 uppercase mb-4 tracking-tighter italic">Create Your Island</h2>
         <p className="text-slate-500 font-bold text-sm tracking-wider">メルカリ出品をより美しくカタログ化</p>
@@ -383,7 +502,7 @@ export default function App() {
 
   // 重要事項同意・登録
   const RegisterView = () => (
-    <div className="max-w-2xl mx-auto py-10">
+    <div className="max-w-2xl mx-auto py-10 animate-in zoom-in-95 duration-200">
       <button onClick={() => setView('join')} className="text-slate-400 text-[10px] font-bold uppercase mb-8 flex items-center gap-2 hover:text-slate-900">
         <ArrowRight className="rotate-180" size={14}/> 戻る
       </button>
@@ -480,7 +599,7 @@ export default function App() {
                   <ShieldCheck className="mx-auto text-emerald-500 mb-6" size={48} />
                   <h2 className="text-3xl font-black text-slate-900 uppercase mb-4 tracking-tight">Platform Guide</h2>
                   <p className="text-slate-500 text-sm leading-relaxed max-w-xl mx-auto">
-                    ARCHIPELAGOは、メルカリに出品された植物を、独自のストーリーと共にカタログ化する場所です。
+                    ARCHIPELAGO（アーキペラゴ）は、メルカリに出品された植物を、独自のストーリーと共にカタログ化する場所です。
                   </p>
                 </div>
                 <div className="grid gap-6 mb-16">
@@ -530,7 +649,7 @@ export default function App() {
 
       <footer className="mt-20 border-t border-slate-100 py-16 text-center bg-white">
         <p className="text-[10px] font-black text-slate-300 tracking-[0.1em] uppercase italic">
-          &copy; 2026 ARCHIPELAGO SYSTEM / BM-LABO
+          &copy; 2026 - {new Date().getFullYear()} BM-LABO / ARCHIPELAGO SYSTEM
         </p>
       </footer>
     </div>
